@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Auditoria</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-journal-check me-2 text-primary"></i>Auditoria
+        </h2>
+        <a href="/auditoria/integridade" class="btn btn-outline-primary">
+            <i class="bi bi-shield-check me-1"></i> Verificar integridade
+        </a>
+    </div>
+
+    <div class="alert alert-success" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${sucesso}"></span>
+    </div>
+    <div class="alert alert-danger" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+    </div>
+
+    <!-- Filtros -->
+    <form method="get" th:action="@{/auditoria}" class="row g-2 mb-3">
+        <div class="col-auto">
+            <select name="entidade" class="form-select">
+                <option value="">Todas as entidades</option>
+                <option th:each="e : ${entidades}"
+                        th:value="${e}" th:text="${e}" th:selected="${e == entidade}"></option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="text" name="entidadeId" class="form-control" placeholder="ID (opcional)" th:value="${entidadeId}">
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="bi bi-search"></i> Filtrar</button>
+        </div>
+    </form>
+
+    <div class="card shadow-sm">
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">Seq.</th>
+                        <th>Data e hora</th>
+                        <th>Usuário</th>
+                        <th>Operação</th>
+                        <th>Entidade</th>
+                        <th>Campos alterados</th>
+                        <th>Justificativa</th>
+                        <th class="pe-3">Hash</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr th:if="${#lists.isEmpty(eventos)}">
+                        <td colspan="8" class="text-center text-muted py-5">
+                            <i class="bi bi-inbox fs-3 d-block mb-2"></i>
+                            Nenhum registro encontrado.
+                        </td>
+                    </tr>
+                    <tr th:each="ev : ${eventos}">
+                        <td class="ps-3 text-muted" th:text="${ev.sequencia}"></td>
+                        <td class="text-nowrap" th:text="${@datas.formatar(ev.ocorridoEm)}"></td>
+                        <td>
+                            <span th:text="${ev.usuario}"></span>
+                            <span class="badge bg-secondary" th:text="${ev.perfil}"></span>
+                        </td>
+                        <td>
+                            <span th:text="${ev.operacaoDescricao}"
+                                  th:classappend="${ev.operacao?.name() == 'ACESSO_NEGADO'} ? 'text-danger fw-bold' : ''"></span>
+                        </td>
+                        <td>
+                            <span th:text="${ev.entidade}"></span>
+                            <div class="text-muted text-break" th:text="${ev.entidadeId}"></div>
+                        </td>
+                        <td>
+                            <ul class="list-unstyled mb-0" th:if="${!#lists.isEmpty(ev.alteracoes)}">
+                                <li th:each="alt : ${ev.alteracoes}">
+                                    <strong th:text="${alt.campo}"></strong>:
+                                    <span class="text-muted" th:text="${alt.valorAnterior ?: '(vazio)'}"></span>
+                                    <i class="bi bi-arrow-right"></i>
+                                    <span th:text="${alt.valorNovo ?: '(vazio)'}"></span>
+                                </li>
+                            </ul>
+                            <span class="text-muted" th:if="${#lists.isEmpty(ev.alteracoes)}">—</span>
+                        </td>
+                        <td th:text="${ev.justificativa ?: '—'}"></td>
+                        <td class="pe-3"><code th:text="${ev.hashResumido}"></code></td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-muted small">
+            Mostrando os <strong th:text="${#lists.size(eventos)}"></strong> registro(s) mais recentes.
+            Telefones aparecem mascarados para proteger os dados pessoais.
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

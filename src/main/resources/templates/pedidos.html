@@ -11,6 +11,9 @@
         <h2 class="fw-bold mb-0">
             <i class="bi bi-bag me-2 text-primary"></i>Pedidos
         </h2>
+        <a href="/pedidos/novo" class="btn btn-primary" th:if="${podeOperar}">
+            <i class="bi bi-plus-lg me-1"></i> Novo Pedido
+        </a>
     </div>
 
     <!-- Mensagens de feedback -->
@@ -27,40 +30,128 @@
 
     <!-- Tabela -->
     <div class="card shadow-sm">
-        <div class="card-body p-0">
+        <div class="card-body p-0 table-responsive">
             <table class="table table-hover align-middle mb-0">
                 <thead class="table-dark">
                     <tr>
-                        <th class="ps-4">ID</th>
-                        <th>Cliente ID</th>
-                        <th>Tipo de Pizza</th>
-                        <th>Sabor</th>
-                        <th>Quantidade</th>
+                        <th class="ps-4">#</th>
+                        <th>Cliente</th>
+                        <th>Itens</th>
+                        <th>Valores</th>
                         <th>Status</th>
+                        <th>Entrada</th>
+                        <th>Saída</th>
+                        <th class="pe-4" th:if="${podeOperar}">Ações</th>
                     </tr>
                 </thead>
                 <tbody>
                     <!-- Lista vazia -->
                     <tr th:if="${#lists.isEmpty(pedidos)}">
-                        <td colspan="6" class="text-center text-muted py-5">
+                        <td colspan="8" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                             Nenhum pedido encontrado.
                         </td>
                     </tr>
                     <!-- Linhas -->
                     <tr th:each="pedido : ${pedidos}">
-                        <td class="ps-4 text-muted" th:text="${pedido.id}"></td>
-                        <td th:text="${pedido.clienteId}"></td>
-                        <td th:text="${pedido.tipoPizza}"></td>
-                        <td th:text="${pedido.sabor}"></td>
-                        <td th:text="${pedido.quantidade}"></td>
+                        <td class="ps-4 text-muted" th:text="${pedido.codigoCurto()}" th:title="${pedido.id}"></td>
+                        <td th:text="${pedido.clienteNome != null} ? ${pedido.clienteNome} : ${pedido.clienteId}"></td>
+                        <td>
+                            <span th:text="${pedido.resumoItens()}"></span>
+                            <div class="small text-muted" th:if="${pedido.observacao}" th:text="${'Obs.: ' + pedido.observacao}"></div>
+                        </td>
+                        <td class="text-nowrap">
+                            <div class="small text-muted">Subtotal: R$ <span th:text="${#numbers.formatDecimal(pedido.subtotal, 1, 'POINT', 2, 'COMMA')}"></span></div>
+                            <div class="small text-success" th:if="${pedido.valorDescontos.signum() > 0}">
+                                Desconto (<span th:text="${pedido.percentualDescontoAcumulado().toPlainString()}"></span>%):
+                                - R$ <span th:text="${#numbers.formatDecimal(pedido.valorDescontos, 1, 'POINT', 2, 'COMMA')}"></span>
+                            </div>
+                            <strong>R$ <span th:text="${#numbers.formatDecimal(pedido.valorTotal, 1, 'POINT', 2, 'COMMA')}"></span></strong>
+                        </td>
                         <td>
                             <span class="badge"
-                                  th:classappend="${pedido.status == 'ENTREGUE'} ? 'bg-success' :
-                                                  (${pedido.status == 'CANCELADO'} ? 'bg-danger' :
-                                                  (${pedido.status == 'EM_PREPARO'} ? 'bg-warning text-dark' : 'bg-secondary'))"
-                                  th:text="${pedido.status}">
+                                  th:classappend="${pedido.status?.name() == 'FINALIZADO'} ? 'bg-success' :
+                                                  (${pedido.status?.name() == 'CANCELADO'} ? 'bg-danger' :
+                                                  (${pedido.status?.name() == 'EM_PREPARACAO'} ? 'bg-warning text-dark' :
+                                                  (${pedido.status?.name() == 'PRONTO'} ? 'bg-info text-dark' :
+                                                  (${pedido.status?.name() == 'DESPACHADO'} ? 'bg-primary' : 'bg-secondary'))))"
+                                  th:text="${pedido.status?.descricao}">
                             </span>
+                            <div class="small text-danger mt-1" th:if="${pedido.motivoCancelamento}">
+                                <span th:text="${'Motivo: ' + pedido.motivoCancelamento}"></span><br>
+                                <span th:text="${'por ' + pedido.canceladoPor + ' em ' + @datas.formatar(pedido.canceladoEm)}"></span>
+                            </div>
+                        </td>
+                        <td class="small text-nowrap">
+                            <div th:text="${@datas.formatar(pedido.entradaEm)}"></div>
+                            <div class="text-muted" th:if="${pedido.registradoPor}" th:text="${'por ' + pedido.registradoPor}"></div>
+                        </td>
+                        <td class="small text-nowrap">
+                            <div th:if="${pedido.saidaEm != null}">
+                                <div th:text="${pedido.modalidadeSaida.descricao}"></div>
+                                <div th:text="${@datas.formatar(pedido.saidaEm)}"></div>
+                                <div class="text-muted" th:text="${'por ' + pedido.saidaRegistradaPor}"></div>
+                            </div>
+                            <span th:if="${pedido.saidaEm == null}" class="text-muted">—</span>
+                        </td>
+
+                        <td class="pe-4" th:if="${podeOperar}" style="min-width: 220px;">
+                            <!-- Próximos passos do fluxo (calculados pelo FluxoPedido) -->
+                            <div class="d-flex flex-wrap gap-1 mb-1">
+                                <th:block th:each="passo : ${pedido.proximosPassos()}">
+                                    <th:block th:if="${passo.name() == 'DESPACHADO'}">
+                                        <form th:action="@{/pedidos/{id}/avanco(id=${pedido.id})}" method="post" class="d-inline">
+                                            <input type="hidden" name="destino" value="DESPACHADO">
+                                            <input type="hidden" name="modalidade" value="ENTREGA">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-bicycle"></i> Saiu p/ entrega
+                                            </button>
+                                        </form>
+                                        <form th:action="@{/pedidos/{id}/avanco(id=${pedido.id})}" method="post" class="d-inline">
+                                            <input type="hidden" name="destino" value="DESPACHADO">
+                                            <input type="hidden" name="modalidade" value="RETIRADA">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-shop"></i> Retirado
+                                            </button>
+                                        </form>
+                                    </th:block>
+                                    <form th:if="${passo.name() != 'DESPACHADO'}"
+                                          th:action="@{/pedidos/{id}/avanco(id=${pedido.id})}" method="post" class="d-inline">
+                                        <input type="hidden" name="destino" th:value="${passo.name()}">
+                                        <button type="submit" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-arrow-right-circle"></i> <span th:text="${passo.descricao}"></span>
+                                        </button>
+                                    </form>
+                                </th:block>
+                            </div>
+
+                            <!-- Ações exclusivas do gerente -->
+                            <details th:if="${ehGerente and (pedido.aceitaDesconto() or pedido.podeSerCancelado())}">
+                                <summary class="small text-primary">Gerência</summary>
+
+                                <form th:if="${pedido.aceitaDesconto()}"
+                                      th:action="@{/pedidos/{id}/descontos(id=${pedido.id})}" method="post" class="mt-2">
+                                    <div class="input-group input-group-sm mb-1">
+                                        <input type="number" name="percentual" class="form-control" min="0.01" step="0.01"
+                                               th:max="${limiteDesconto}" placeholder="%" required>
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    <input type="text" name="motivo" class="form-control form-control-sm mb-1"
+                                           placeholder="Motivo do desconto" minlength="5" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-success w-100">
+                                        <i class="bi bi-percent"></i> Aplicar desconto
+                                    </button>
+                                </form>
+
+                                <form th:if="${pedido.podeSerCancelado()}"
+                                      th:action="@{/pedidos/{id}/cancelamento(id=${pedido.id})}" method="post" class="mt-2">
+                                    <input type="text" name="motivo" class="form-control form-control-sm mb-1"
+                                           placeholder="Justificativa do cancelamento" minlength="5" required>
+                                    <button type="submit" class="btn btn-sm btn-outline-danger w-100">
+                                        <i class="bi bi-x-circle"></i> Cancelar pedido
+                                    </button>
+                                </form>
+                            </details>
                         </td>
                     </tr>
                 </tbody>

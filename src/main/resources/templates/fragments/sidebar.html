@@ -25,6 +25,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link" th:href="@{/auditoria}">
+                            <i class="bi bi-journal-check"></i><span class="d-none d-md-inline">&nbsp;Auditoria</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link" href="#" onclick="toggleSubmenu(event, this)">
                             <i class="bi bi-gear"></i><span class="d-none d-md-inline">&nbsp;Configurações</span>
                             <span class="float-end">&#9662;</span> <!-- Setinha -->
@@ -59,6 +64,20 @@
                 </ul>
                 </li>
                 </ul>
+
+                <!-- Quem está logado e botão de sair (logout é POST por causa do CSRF) -->
+                <div class="px-3 py-3 small" th:if="${sessao != null}">
+                    <div class="mb-2">
+                        <i class="bi bi-person-badge"></i>
+                        <span th:text="${sessao.usuario}"></span>
+                        <span class="badge bg-secondary" th:text="${sessao.perfil}"></span>
+                    </div>
+                    <form th:action="@{/logout}" method="post">
+                        <button type="submit" class="btn btn-sm btn-outline-light w-100">
+                            <i class="bi bi-box-arrow-right"></i> Sair
+                        </button>
+                    </form>
+                </div>
             </div>
         </div>
     </body>

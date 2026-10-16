@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Novo Pedido</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex align-items-center gap-3 mb-4">
+        <a href="/pedidos" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-arrow-left"></i>
+        </a>
+        <h2 class="fw-bold mb-0">Novo Pedido</h2>
+    </div>
+
+    <div class="alert alert-danger" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+    </div>
+
+    <div class="card shadow-sm" style="max-width: 720px;">
+        <div class="card-body p-4">
+
+            <!-- Só vão produto e quantidade. Preço e total quem calcula é o servidor. -->
+            <form th:action="@{/pedidos}" method="post">
+
+                <div class="mb-3">
+                    <label for="clienteId" class="form-label fw-medium">
+                        <i class="bi bi-person me-1"></i>Cliente
+                    </label>
+                    <select id="clienteId" name="clienteId" class="form-select" required>
+                        <option value="" selected disabled>Selecione o cliente</option>
+                        <option th:each="cliente : ${clientes}" th:value="${cliente.id}"
+                                th:text="${cliente.nome + ' — ' + (cliente.telefone ?: '')}"></option>
+                    </select>
+                </div>
+
+                <label class="form-label fw-medium"><i class="bi bi-basket me-1"></i>Itens</label>
+                <table class="table table-sm align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Produto</th>
+                            <th>Preço</th>
+                            <th style="width: 120px;">Quantidade</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr th:if="${#lists.isEmpty(produtos)}">
+                            <td colspan="3" class="text-muted text-center">Nenhum produto ativo cadastrado.</td>
+                        </tr>
+                        <tr th:each="produto, st : ${produtos}">
+                            <td>
+                                <span th:text="${produto.nome}"></span>
+                                <small class="text-muted" th:text="${produto.tipo}"></small>
+                                <input type="hidden" th:name="|itens[${st.index}].produtoId|" th:value="${produto.id}">
+                            </td>
+                            <td th:text="${'R$ ' + #numbers.formatDecimal(produto.preco, 1, 'POINT', 2, 'COMMA')}"></td>
+                            <td>
+                                <input type="number" class="form-control form-control-sm" min="0" max="50" value="0"
+                                       th:name="|itens[${st.index}].quantidade|">
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <div class="mb-4">
+                    <label for="observacao" class="form-label fw-medium">
+                        <i class="bi bi-chat-left-text me-1"></i>Observação
+                    </label>
+                    <input type="text" id="observacao" name="observacao" class="form-control"
+                           maxlength="200" placeholder="Ex: sem cebola, troco para 100">
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-lg me-1"></i> Registrar Pedido
+                    </button>
+                    <a href="/pedidos" class="btn btn-outline-secondary">Cancelar</a>
+                </div>
+            </form>
+        </div>
+    </div>
+
+</div>
+
+</body>
+</html>

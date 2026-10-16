@@ -14,6 +14,13 @@
         </a>
     </div>
 
+    <div class="alert alert-success" th:if="${sucesso}" role="alert">
+        <i class="bi bi-check-circle-fill me-2"></i><span th:text="${sucesso}"></span>
+    </div>
+    <div class="alert alert-danger" th:if="${erro}" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i><span th:text="${erro}"></span>
+    </div>
+
     <!-- Tabela de clientes -->
     <div class="card shadow-sm">
         <div class="card-body p-0">
@@ -37,6 +44,20 @@
         const API_URL = '/api/clientes';
         const tabelaClientes = document.getElementById('clientes-tabela');
 
+        // Lê o token CSRF que o layout coloca nas meta tags
+        function cabecalhoCsrf() {
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+            return token && header ? { [header]: token } : {};
+        }
+
+        // Evita que um nome com <script> vire código na página
+        function escapar(texto) {
+            const div = document.createElement('div');
+            div.textContent = texto ?? '';
+            return div.innerHTML;
+        }
+
         function formatarEndereco(cliente) {
             const partes = [
                 cliente.logradouro,
@@ -52,6 +73,10 @@
 
         async function carregarClientes() {
             const response = await fetch(API_URL);
+            if (!response.ok) {
+                tabelaClientes.innerHTML = `<tr><td colspan="4" class="text-center text-danger py-4">Não foi possível carregar os clientes (erro ${response.status}).</td></tr>`;
+                return;
+            }
             const clientes = await response.json();
             tabelaClientes.innerHTML = '';
 
@@ -69,9 +94,9 @@
             clientes.forEach(cliente => {
                 const row = document.createElement('tr');
                 row.innerHTML = `
-                    <td>${cliente.nome || '—'}</td>
-                    <td>${cliente.telefone || '—'}</td>
-                    <td>${formatarEndereco(cliente)}</td>
+                    <td>${escapar(cliente.nome) || '—'}</td>
+                    <td>${escapar(cliente.telefone) || '—'}</td>
+                    <td>${escapar(formatarEndereco(cliente))}</td>
                     <td class="text-end pe-4">
                         <a href="/clientes/editar/${cliente.id}" class="btn btn-sm btn-outline-primary me-1">
                             <i class="bi bi-pencil-fill"></i> Editar
@@ -87,10 +112,12 @@
 
         async function excluirCliente(id) {
             if (confirm('Tem certeza que deseja excluir este cliente?')) {
-                const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+                const response = await fetch(`${API_URL}/${id}`, { method: 'DELETE', headers: cabecalhoCsrf() });
                 if (response.ok) {
                     alert('Cliente excluído com sucesso!');
                     carregarClientes();
+                } else if (response.status === 403) {
+                    alert('Seu perfil não tem permissão para excluir clientes.');
                 } else {
                     alert('Erro ao excluir o cliente.');
                 }
