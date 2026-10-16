@@ -6,4 +6,7 @@ import java.util.Optional;
 
 public interface UsuarioRepository extends MongoRepository<Usuario, String> {
     Optional<Usuario> findByUsername(String username);
+
+    // Usado para não deixar o sistema ficar sem nenhum ADMIN.
+    long countByRole(String role);
 }

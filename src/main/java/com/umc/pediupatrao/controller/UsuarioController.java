@@ -2,12 +2,15 @@ package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.entity.Usuario;
 import com.umc.pediupatrao.service.UsuarioService;
+import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Optional;
-
+/**
+ * API de usuários. Antes ela era pública (qualquer um criava um ADMIN sem login).
+ * Agora só o ADMIN acessa, e as respostas nunca trazem a senha.
+ */
 @RestController
 @RequestMapping("/api/usuarios")
 public class UsuarioController {
@@ -18,54 +21,31 @@ public class UsuarioController {
         this.usuarioService = usuarioService;
     }
 
-    // Endpoint para listar todos os usuários
     @GetMapping
-    public ResponseEntity<Iterable<Usuario>> listarTodos() {
-        Iterable<Usuario> usuarios = usuarioService.listarTodos();
-        return ResponseEntity.ok(usuarios);
+    public List<Usuario> listarTodos() {
+        return usuarioService.listarTodos();
     }
 
-    // Endpoint para buscar um usuário por ID
     @GetMapping("/{id}")
     public ResponseEntity<Usuario> buscarPorId(@PathVariable String id) {
-        Optional<Usuario> usuario = usuarioService.buscarPorId(id);
-        return usuario.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return usuarioService.buscarPorId(id)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 
-    // Endpoint para criar um novo usuário
     @PostMapping
     public ResponseEntity<Usuario> criarUsuario(@RequestBody Usuario usuario) {
-        usuarioService.salvarUsuario(usuario);
-        return ResponseEntity.status(HttpStatus.CREATED).body(usuario);
+        return ResponseEntity.status(HttpStatus.CREATED).body(usuarioService.criar(usuario));
     }
 
-    // Endpoint para atualizar um usuário
     @PutMapping("/{id}")
     public ResponseEntity<Usuario> atualizarUsuario(@PathVariable String id, @RequestBody Usuario usuarioAtualizado) {
-        Optional<Usuario> usuarioExistente = usuarioService.buscarPorId(id);
-
-        if (usuarioExistente.isPresent()) {
-            Usuario usuario = usuarioExistente.get();
-            usuario.setUsername(usuarioAtualizado.getUsername());
-            usuario.setPassword(usuarioAtualizado.getPassword());
-            usuarioService.salvarUsuario(usuario);
-
-            return ResponseEntity.ok(usuario);
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        return ResponseEntity.ok(usuarioService.atualizar(id, usuarioAtualizado));
     }
 
-    // Endpoint para deletar um usuário
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deletarUsuario(@PathVariable String id) {
-        Optional<Usuario> usuarioExistente = usuarioService.buscarPorId(id);
-
-        if (usuarioExistente.isPresent()) {
-            usuarioService.deletarUsuario(id);
-            return ResponseEntity.noContent().build();
-        } else {
-            return ResponseEntity.notFound().build();
-        }
+        usuarioService.excluir(id);
+        return ResponseEntity.noContent().build();
     }
 }
