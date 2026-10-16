@@ -1,1 +1,4 @@
 /target/
+
+# String de conexão do banco (não versionar)
+src/main/resources/segredos.properties

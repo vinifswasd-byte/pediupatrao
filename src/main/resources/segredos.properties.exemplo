@@ -1,0 +1,3 @@
+# Copie este arquivo para "segredos.properties" (mesma pasta) e troque pela sua string do Atlas.
+# O segredos.properties está no .gitignore e não vai para o GitHub.
+MONGODB_URI=mongodb+srv://SEU_USUARIO:SUA_SENHA@SEU_CLUSTER.mongodb.net/?appName=Cluster0

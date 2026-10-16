@@ -1,0 +1,98 @@
+### Requisições para demonstrar a API (formato .http: VS Code com a extensão "REST Client",
+### IntelliJ, ou copie para o Postman). Troque os IDs pelos que aparecerem no seu banco.
+### Usuário e senha vão no cabeçalho (HTTP Basic), então não precisa de token CSRF.
+
+@base = http://localhost:8080
+@pedidoId = COLE_AQUI_O_ID_DO_PEDIDO
+@clienteId = COLE_AQUI_O_ID_DO_CLIENTE
+@produtoId = COLE_AQUI_O_ID_DO_PRODUTO
+
+### 1) Sem login -> 401
+GET {{base}}/api/pedidos
+
+### 2) Atendente registra um pedido (o total é calculado pelo servidor;
+###    o "valorTotal" enviado abaixo é ignorado de propósito)
+POST {{base}}/api/pedidos
+Authorization: Basic atendente01 teste123
+Content-Type: application/json
+
+{
+  "clienteId": "{{clienteId}}",
+  "itens": [ { "produtoId": "{{produtoId}}", "quantidade": 2 } ],
+  "observacao": "sem cebola",
+  "valorTotal": 0.01
+}
+
+### 3) Atendente tenta cancelar -> 403 (exclusivo do gerente)
+POST {{base}}/api/pedidos/{{pedidoId}}/cancelamento
+Authorization: Basic atendente01 teste123
+Content-Type: application/json
+
+{ "motivo": "Tentando cancelar sem permissão" }
+
+### 4) Admin tenta dar desconto -> 403 (nem o admin pode)
+POST {{base}}/api/pedidos/{{pedidoId}}/descontos
+Authorization: Basic admin teste123
+Content-Type: application/json
+
+{ "percentual": 10, "motivo": "Tentativa do admin" }
+
+### 5) Atendente tenta ver a auditoria -> 403
+GET {{base}}/api/auditoria
+Authorization: Basic atendente01 teste123
+
+### 6) Atendente tenta criar um ADMIN -> 403 (proteção contra autoelevação)
+POST {{base}}/api/usuarios
+Authorization: Basic atendente01 teste123
+Content-Type: application/json
+
+{ "username": "hacker", "password": "123456", "role": "ADMIN" }
+
+### 7) Gerente aplica 15% -> OK
+POST {{base}}/api/pedidos/{{pedidoId}}/descontos
+Authorization: Basic gerente01 teste123
+Content-Type: application/json
+
+{ "percentual": 15, "motivo": "Atraso na entrega" }
+
+### 8) Gerente tenta mais 10% -> 422 (passaria de 20%)
+POST {{base}}/api/pedidos/{{pedidoId}}/descontos
+Authorization: Basic gerente01 teste123
+Content-Type: application/json
+
+{ "percentual": 10, "motivo": "Mais desconto" }
+
+### 9) Transição inválida: finalizar direto -> 422
+POST {{base}}/api/pedidos/{{pedidoId}}/finalizacao
+Authorization: Basic gerente01 teste123
+
+### 10) Fluxo correto
+POST {{base}}/api/pedidos/{{pedidoId}}/preparo
+Authorization: Basic atendente01 teste123
+
+###
+POST {{base}}/api/pedidos/{{pedidoId}}/pronto
+Authorization: Basic atendente01 teste123
+
+###
+POST {{base}}/api/pedidos/{{pedidoId}}/saida?modalidade=ENTREGA
+Authorization: Basic atendente01 teste123
+
+### 11) Depois da saída, gerente não consegue mais cancelar -> 422
+POST {{base}}/api/pedidos/{{pedidoId}}/cancelamento
+Authorization: Basic gerente01 teste123
+Content-Type: application/json
+
+{ "motivo": "Cliente desistiu tarde demais" }
+
+###
+POST {{base}}/api/pedidos/{{pedidoId}}/finalizacao
+Authorization: Basic atendente01 teste123
+
+### 12) Auditoria do pedido e verificação da corrente de hash
+GET {{base}}/api/auditoria?entidade=Pedido&entidadeId={{pedidoId}}
+Authorization: Basic gerente01 teste123
+
+###
+GET {{base}}/api/auditoria/integridade
+Authorization: Basic admin teste123
