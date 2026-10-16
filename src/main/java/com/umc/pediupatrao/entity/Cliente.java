@@ -1,10 +1,12 @@
 package com.umc.pediupatrao.entity;
 
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "clientes")
-public class Cliente {
+public class Cliente implements Auditavel {
 
     @Id
     private String id;
@@ -55,4 +57,47 @@ public class Cliente {
 
     public String getEndereco() { return endereco; }
     public void setEndereco(String endereco) { this.endereco = endereco; }
+
+    /**
+     * Copia só os campos que o atendente pode editar.
+     * O id e o endereço legado ficam de fora, assim ninguém troca o id de outro
+     * cliente mandando um JSON "esperto".
+     */
+    public void copiarDadosEditaveis(Cliente origem) {
+        this.nome = limpar(origem.nome);
+        this.telefone = limpar(origem.telefone);
+        this.cep = limpar(origem.cep);
+        this.logradouro = limpar(origem.logradouro);
+        this.numero = limpar(origem.numero);
+        this.complemento = limpar(origem.complemento);
+        this.bairro = limpar(origem.bairro);
+        this.cidade = limpar(origem.cidade);
+        this.estado = limpar(origem.estado);
+    }
+
+    @Override
+    public Map<String, String> retratoParaAuditoria() {
+        Map<String, String> foto = new LinkedHashMap<>();
+        foto.put("nome", nome);
+        foto.put("telefone", telefone);
+        foto.put("cep", cep);
+        foto.put("logradouro", logradouro);
+        foto.put("numero", numero);
+        foto.put("complemento", complemento);
+        foto.put("bairro", bairro);
+        foto.put("cidade", cidade);
+        foto.put("estado", estado);
+        foto.values().removeIf(v -> v == null);
+        return foto;
+    }
+
+    // Tira espaços sobrando e transforma texto vazio em null,
+    // para "" e null não aparecerem na auditoria como se fossem uma mudança.
+    private static String limpar(String valor) {
+        if (valor == null) {
+            return null;
+        }
+        String semEspacos = valor.trim();
+        return semEspacos.isEmpty() ? null : semEspacos;
+    }
 }

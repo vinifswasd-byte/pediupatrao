@@ -1,23 +1,32 @@
 package com.umc.pediupatrao.controller;
 
 import com.umc.pediupatrao.entity.Cliente;
+import com.umc.pediupatrao.exception.RecursoNaoEncontradoException;
 import com.umc.pediupatrao.service.ClienteService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/clientes")
 public class ClienteController {
 
-    @Autowired
-    private ClienteService clienteService;
+    private final ClienteService clienteService;
+
+    public ClienteController(ClienteService clienteService) {
+        this.clienteService = clienteService;
+    }
 
     @GetMapping
     public List<Cliente> listarClientes() {
         return clienteService.listarClientes();
+    }
+
+    @GetMapping("/{id}")
+    public Cliente buscar(@PathVariable String id) {
+        return clienteService.buscarPorId(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", id));
     }
 
     @DeleteMapping("/{id}")
@@ -28,14 +37,12 @@ public class ClienteController {
 
     @PostMapping
     public ResponseEntity<Cliente> salvarCliente(@RequestBody Cliente cliente) {
-        Cliente salvo = clienteService.salvar(cliente);
+        Cliente salvo = clienteService.cadastrar(cliente);
         return ResponseEntity.status(HttpStatus.CREATED).body(salvo);
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<Cliente> atualizarCliente(@PathVariable String id, @RequestBody Cliente cliente) {
-        cliente.setId(id);
-        Cliente atualizado = clienteService.salvar(cliente);
-        return ResponseEntity.ok(atualizado);
+        return ResponseEntity.ok(clienteService.atualizar(id, cliente));
     }
 }

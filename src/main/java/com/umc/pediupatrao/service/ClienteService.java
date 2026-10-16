@@ -1,49 +1,93 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.entity.Cliente;
+import com.umc.pediupatrao.entity.TipoOperacao;
+import com.umc.pediupatrao.exception.RecursoNaoEncontradoException;
+import com.umc.pediupatrao.exception.RegraNegocioException;
 import com.umc.pediupatrao.repository.ClienteRepository;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
 
+/**
+ * Cadastro de clientes.
+ * Atendente cadastra e altera, gerente consulta (e é quem pode excluir).
+ * Toda inclusão, alteração e exclusão vai para a auditoria (RF05).
+ */
 @Service
 public class ClienteService {
 
-    @Autowired
-    private ClienteRepository clienteRepository;
+    private final ClienteRepository clienteRepository;
+    private final AuditoriaService auditoria;
 
-    public Cliente novoCliente(Cliente cliente) {
-        return clienteRepository.save(cliente);
+    public ClienteService(ClienteRepository clienteRepository, AuditoriaService auditoria) {
+        this.clienteRepository = clienteRepository;
+        this.auditoria = auditoria;
     }
 
+    @PreAuthorize("hasAnyRole('GERENTE','ATENDENTE')")
     public List<Cliente> listarClientes() {
         return clienteRepository.findAll();
     }
 
-    // Método para excluir cliente
-    public void excluir(String id) {
-        clienteRepository.deleteById(id);
-    }
-
+    @PreAuthorize("hasAnyRole('GERENTE','ATENDENTE')")
     public Optional<Cliente> buscarPorId(String id) {
         return clienteRepository.findById(id);
     }
 
-    // Método para salvar um novo cliente ou atualizar um cliente existente
-    public Cliente salvar(Cliente cliente) {
-        // Se o cliente não tem ID (novo cliente), salva como novo
-        if (cliente.getId() == null) {
-            return clienteRepository.save(cliente);  // Cria um novo cliente
-        } // Se já tem ID (cliente existente), atualiza
-        else {
-            // Verifica se o cliente existe antes de atualizar
-            if (clienteRepository.existsById(cliente.getId())) {
-                return clienteRepository.save(cliente);  // Atualiza o cliente existente
-            } else {
-                throw new IllegalArgumentException("Cliente não encontrado para atualização.");
-            }
-        }
+    @PreAuthorize("hasRole('ATENDENTE')")
+    public Cliente cadastrar(Cliente dados) {
+        Cliente novo = new Cliente();
+        novo.copiarDadosEditaveis(dados);
+        validar(novo);
+
+        Cliente salvo = clienteRepository.save(novo);
+        auditoria.registrar(TipoOperacao.CRIACAO_CLIENTE, "Cliente", salvo.getId(),
+                Map.of(), salvo.retratoParaAuditoria(), null);
+        return salvo;
     }
 
+    /**
+     * Altera o cliente e registra campo a campo o que mudou
+     * (por exemplo: logradouro "Rua das Flores" -> "Av. Brasil").
+     */
+    @PreAuthorize("hasRole('ATENDENTE')")
+    public Cliente atualizar(String id, Cliente dados) {
+        Cliente existente = clienteRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", id));
+
+        Map<String, String> antes = existente.retratoParaAuditoria();
+        existente.copiarDadosEditaveis(dados);
+        validar(existente);
+
+        Cliente salvo = clienteRepository.save(existente);
+        auditoria.registrar(TipoOperacao.ALTERACAO_CLIENTE, "Cliente", salvo.getId(),
+                antes, salvo.retratoParaAuditoria(), null);
+        return salvo;
+    }
+
+    @PreAuthorize("hasRole('GERENTE')")
+    public void excluir(String id) {
+        Cliente existente = clienteRepository.findById(id)
+                .orElseThrow(() -> new RecursoNaoEncontradoException("Cliente", id));
+        clienteRepository.deleteById(id);
+        // Guardamos a última foto do cliente para saber o que foi apagado.
+        auditoria.registrar(TipoOperacao.EXCLUSAO_CLIENTE, "Cliente", id,
+                existente.retratoParaAuditoria(), Map.of(), null);
+    }
+
+    private void validar(Cliente cliente) {
+        if (cliente.getNome() == null) {
+            throw new RegraNegocioException("O nome do cliente é obrigatório.");
+        }
+        if (cliente.getTelefone() == null) {
+            throw new RegraNegocioException("O telefone do cliente é obrigatório.");
+        }
+        String digitos = cliente.getTelefone().replaceAll("\\D", "");
+        if (digitos.length() < 10 || digitos.length() > 11) {
+            throw new RegraNegocioException("Telefone inválido: use DDD + número (10 ou 11 dígitos).");
+        }
+    }
 }

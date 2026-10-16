@@ -1,12 +1,14 @@
 package com.umc.pediupatrao.entity;
 
 import jakarta.persistence.Entity;
+import java.util.LinkedHashMap;
+import java.util.Map;
 import org.springframework.data.annotation.Id;
 import org.springframework.data.mongodb.core.mapping.Document;
 
 @Document(collection = "produtos")
 @Entity
-public class Produto {
+public class Produto implements Auditavel {
     
     @Id
     private String id;
@@ -54,6 +56,20 @@ public class Produto {
     public void setAtivo(Boolean ativo) {
         this.ativo = ativo;
     }
-    
-    
+
+    /** Produto sem a marcação de ativo (cadastros antigos) é tratado como ativo. */
+    public boolean disponivelParaVenda() {
+        return !Boolean.FALSE.equals(ativo);
+    }
+
+    @Override
+    public Map<String, String> retratoParaAuditoria() {
+        Map<String, String> foto = new LinkedHashMap<>();
+        foto.put("nome", nome);
+        foto.put("tipo", tipo);
+        foto.put("preco", preco == null ? null : String.valueOf(preco));
+        foto.put("ativo", ativo == null ? null : String.valueOf(ativo));
+        foto.values().removeIf(v -> v == null);
+        return foto;
+    }
 }
