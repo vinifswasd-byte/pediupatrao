@@ -3,6 +3,7 @@ package com.umc.pediupatrao.config;
 import com.umc.pediupatrao.security.EntradaApiNaoAutenticada;
 import com.umc.pediupatrao.security.TratadorAcessoNegado;
 import com.umc.pediupatrao.service.UsuarioDetailsService;
+import jakarta.servlet.DispatcherType;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -31,6 +32,7 @@ import org.springframework.security.web.authentication.AuthenticationSuccessHand
  * ADMIN     - usuários e perfis, consulta de pedidos e auditoria
  * GERENTE   - pedidos (incluindo cancelar e dar desconto), consulta de clientes, produtos e auditoria
  * ATENDENTE - cadastra e altera clientes, registra pedidos e acompanha o andamento
+ * Dashboard administrativo: ADMIN e GERENTE
  */
 @Configuration
 @EnableWebSecurity
@@ -83,10 +85,17 @@ public class SecurityConfig {
 
                 // A ordem importa: a primeira regra que combinar com a requisição é a que vale.
                 .authorizeHttpRequests(auth -> auth
+                        // O tempo real do dashboard (SSE) usa requisição assíncrona: quando a
+                        // conexão termina, o Tomcat faz um "despacho" interno que já foi
+                        // autorizado na abertura. Sem esta linha ele seria barrado de novo.
+                        .dispatcherTypeMatchers(DispatcherType.ASYNC).permitAll()
                         .requestMatchers("/login", "/error", "/css/**", "/dist/**", "/plugins/**", "/js/**", "/images/**").permitAll()
 
                         // Usuários e páginas administrativas
                         .requestMatchers("/usuarios/**", "/api/usuarios/**", "/admin", "/teste", "/configuracoes").hasRole(ADMIN)
+
+                        // Dashboard administrativo (tela, API e tempo real): admin e gerente
+                        .requestMatchers("/dashboard/**", "/api/dashboard/**").hasAnyRole(ADMIN, GERENTE)
 
                         // Auditoria: só leitura, para admin e gerente
                         .requestMatchers("/auditoria/**", "/api/auditoria/**").hasAnyRole(ADMIN, GERENTE)
