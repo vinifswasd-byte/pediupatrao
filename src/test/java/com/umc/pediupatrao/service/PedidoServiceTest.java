@@ -13,6 +13,7 @@ import static org.mockito.Mockito.when;
 
 import com.umc.pediupatrao.dto.ItemPedidoRequest;
 import com.umc.pediupatrao.dto.PedidoRequest;
+import com.umc.pediupatrao.dto.dashboard.PedidoAlteradoEvento;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.entity.ModalidadeSaida;
 import com.umc.pediupatrao.entity.Pedido;
@@ -32,6 +33,7 @@ import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.context.ApplicationEventPublisher;
 
 /**
  * Testa as regras do PedidoService com repositórios "de mentira" (Mockito),
@@ -45,6 +47,7 @@ class PedidoServiceTest {
     private ProdutoRepository produtoRepository;
     private ClienteRepository clienteRepository;
     private AuditoriaService auditoria;
+    private ApplicationEventPublisher eventos;
     private PedidoService service;
 
     @BeforeEach
@@ -53,11 +56,12 @@ class PedidoServiceTest {
         produtoRepository = mock(ProdutoRepository.class);
         clienteRepository = mock(ClienteRepository.class);
         auditoria = mock(AuditoriaService.class);
+        eventos = mock(ApplicationEventPublisher.class);
         UsuarioLogado usuarioLogado = mock(UsuarioLogado.class);
         when(usuarioLogado.nome()).thenReturn("gerente01");
 
         service = new PedidoService(pedidoRepository, clienteRepository, produtoRepository,
-                auditoria, usuarioLogado, Clock.fixed(AGORA, ZoneOffset.UTC));
+                auditoria, usuarioLogado, Clock.fixed(AGORA, ZoneOffset.UTC), eventos);
 
         Cliente cliente = new Cliente();
         cliente.setId("c1");
@@ -82,6 +86,8 @@ class PedidoServiceTest {
         assertEquals("gerente01", pedido.getRegistradoPor());
         assertEquals(AGORA, pedido.getEntradaEm());
         verify(auditoria).registrar(eq(TipoOperacao.CRIACAO_PEDIDO), eq("Pedido"), any(), anyMap(), anyMap(), isNull());
+        // o dashboard é avisado em tempo real
+        verify(eventos).publishEvent(any(PedidoAlteradoEvento.class));
     }
 
     @Test
