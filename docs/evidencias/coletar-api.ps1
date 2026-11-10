@@ -1,4 +1,4 @@
-# Coleta evidências reais da API do dashboard e grava em docs/evidencias/respostas-api.md.
+﻿# Coleta evidências reais da API do dashboard e grava em docs/evidencias/respostas-api.md.
 # Uso (PowerShell, na raiz do projeto, com o sistema rodando em http://localhost:8080):
 #   powershell -ExecutionPolicy Bypass -File docs/evidencias/coletar-api.ps1
 
