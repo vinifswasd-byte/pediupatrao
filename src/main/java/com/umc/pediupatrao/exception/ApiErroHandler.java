@@ -6,6 +6,8 @@ import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -42,6 +44,22 @@ public class ApiErroHandler {
     public ProblemDetail conflito(OptimisticLockingFailureException e) {
         return problema(HttpStatus.CONFLICT, "Conflito",
                 "O pedido foi alterado por outra pessoa ao mesmo tempo. Atualize e tente de novo.");
+    }
+
+    @ExceptionHandler(FiltroInvalidoException.class)
+    public ProblemDetail filtroInvalido(FiltroInvalidoException e) {
+        return problema(HttpStatus.BAD_REQUEST, "Filtro inválido", e.getMessage());
+    }
+
+    // Parâmetro de filtro com formato errado, ex.: inicio=10/11/2026 ou status=ENTREGUE
+    @ExceptionHandler(BindException.class)
+    public ProblemDetail parametroInvalido(BindException e) {
+        FieldError erro = e.getFieldError();
+        String campo = erro == null ? "desconhecido" : erro.getField();
+        Object valor = erro == null ? null : erro.getRejectedValue();
+        return problema(HttpStatus.BAD_REQUEST, "Parâmetro inválido",
+                "Valor inválido para '" + campo + "': " + valor
+                + ". Datas no formato AAAA-MM-DD e status/modalidade com os valores de /api/dashboard/opcoes.");
     }
 
     @ExceptionHandler({HttpMessageNotReadableException.class, MethodArgumentTypeMismatchException.class})
