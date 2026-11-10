@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Dashboard</title>
+</head>
+<body>
+
+<div th:fragment="content" id="dashboard">
+
+    <!-- Cabeçalho: título, indicador de tempo real e última atualização -->
+    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-speedometer2 me-2 text-primary"></i>Dashboard
+        </h2>
+        <div class="d-flex align-items-center gap-3 small">
+            <span id="statusConexao" class="badge bg-secondary" title="Atualização em tempo real">
+                <i class="bi bi-circle-fill me-1"></i>Conectando...
+            </span>
+            <span class="text-muted">Atualizado às <strong id="ultimaAtualizacao">—</strong></span>
+            <button type="button" id="btnAtualizar" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-arrow-clockwise"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <!-- Avisos (erro de filtro, API fora do ar, pedido alterado) -->
+    <div id="alertas"></div>
+
+    <!-- Filtros (RF05) -->
+    <form id="formFiltros" class="card shadow-sm mb-3">
+        <div class="card-body py-3">
+            <div class="row g-2 align-items-end">
+                <div class="col-6 col-md-2">
+                    <label for="fInicio" class="form-label small mb-1">De</label>
+                    <input type="date" id="fInicio" name="inicio" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="fFim" class="form-label small mb-1">Até</label>
+                    <input type="date" id="fFim" name="fim" class="form-control form-control-sm">
+                </div>
+                <div class="col-6 col-md-2">
+                    <span class="form-label small mb-1 d-block">Status</span>
+                    <div class="dropdown">
+                        <button type="button" id="btnStatus" class="btn btn-sm btn-outline-secondary dropdown-toggle w-100 text-start"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">Todos</button>
+                        <div class="dropdown-menu p-2 small" id="listaStatus"></div>
+                    </div>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="fModalidade" class="form-label small mb-1">Saída</label>
+                    <select id="fModalidade" name="modalidade" class="form-select form-select-sm">
+                        <option value="">Todas</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2">
+                    <label for="fProduto" class="form-label small mb-1">Produto</label>
+                    <select id="fProduto" name="produtoId" class="form-select form-select-sm">
+                        <option value="">Todos</option>
+                    </select>
+                </div>
+                <div class="col-6 col-md-2 d-flex gap-1">
+                    <button type="submit" class="btn btn-sm btn-primary flex-fill">
+                        <i class="bi bi-funnel"></i> Filtrar
+                    </button>
+                    <button type="button" id="btnLimpar" class="btn btn-sm btn-outline-secondary" title="Limpar filtros">
+                        <i class="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <div class="mt-2 d-flex flex-wrap gap-1 small">
+                <span class="text-muted me-1">Atalhos:</span>
+                <button type="button" class="btn btn-sm btn-light py-0" data-periodo="hoje">Hoje</button>
+                <button type="button" class="btn btn-sm btn-light py-0" data-periodo="7">7 dias</button>
+                <button type="button" class="btn btn-sm btn-light py-0" data-periodo="30">30 dias</button>
+                <button type="button" class="btn btn-sm btn-light py-0" data-periodo="mes">Este mês</button>
+            </div>
+        </div>
+    </form>
+
+    <!-- Indicadores gerais (RF01) -->
+    <div class="row g-3 mb-3" id="indicadores">
+        <div class="col-6 col-lg-2">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Faturamento</div>
+                <div class="fs-5 fw-bold text-nowrap" id="kFaturamento">—</div>
+                <div class="small" id="kFaturamentoVar"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Pedidos</div>
+                <div class="fs-5 fw-bold text-nowrap" id="kPedidos">—</div>
+                <div class="small" id="kPedidosVar"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Ticket médio</div>
+                <div class="fs-5 fw-bold text-nowrap" id="kTicket">—</div>
+                <div class="small text-muted" id="kDescontos"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Itens vendidos</div>
+                <div class="fs-5 fw-bold text-nowrap" id="kItens">—</div>
+                <div class="small text-muted" id="kClientes"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Cancelamentos</div>
+                <div class="fs-5 fw-bold text-nowrap" id="kCancelados">—</div>
+                <div class="small text-danger" id="kValorCancelado"></div>
+            </div></div>
+        </div>
+        <div class="col-6 col-lg-2">
+            <div class="card shadow-sm h-100"><div class="card-body">
+                <div class="text-muted small">Tempo até a saída</div>
+                <div class="fs-5 fw-bold text-nowrap" id="kTempo">—</div>
+                <div class="small text-muted">média entre entrada e saída</div>
+            </div></div>
+        </div>
+    </div>
+
+    <!-- Vendas no tempo (RF02) + situação dos pedidos (RF03) -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold"><i class="bi bi-graph-up me-1"></i>Vendas no período</span>
+                    <select id="fAgrupamento" class="form-select form-select-sm w-auto"></select>
+                </div>
+                <div class="card-body">
+                    <div id="graficoVendas" style="height: 320px;"></div>
+                    <div class="small text-muted" id="picoVendas"></div>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-pie-chart me-1"></i>Situação dos pedidos</div>
+                <div class="card-body"><div id="graficoStatus" style="height: 320px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Produtos mais vendidos (RF04), horários de pico e canais -->
+    <div class="row g-3 mb-3">
+        <div class="col-lg-5">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <span class="fw-semibold"><i class="bi bi-trophy me-1"></i>Mais vendidos</span>
+                    <div class="btn-group btn-group-sm" role="group" aria-label="Critério do ranking">
+                        <input type="radio" class="btn-check" name="criterio" id="crQtd" value="QUANTIDADE" checked>
+                        <label class="btn btn-outline-secondary" for="crQtd">Unidades</label>
+                        <input type="radio" class="btn-check" name="criterio" id="crFat" value="FATURAMENTO">
+                        <label class="btn btn-outline-secondary" for="crFat">Valor</label>
+                    </div>
+                </div>
+                <div class="card-body"><div id="graficoRanking" style="height: 300px;"></div></div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-clock-history me-1"></i>Pedidos por hora do dia</div>
+                <div class="card-body"><div id="graficoHoras" style="height: 300px;"></div></div>
+            </div>
+        </div>
+        <div class="col-lg-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-white fw-semibold"><i class="bi bi-bicycle me-1"></i>Entrega x retirada</div>
+                <div class="card-body"><div id="graficoCanais" style="height: 300px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fila de pedidos abertos agora (RF03) -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-white fw-semibold">
+            <i class="bi bi-hourglass-split me-1"></i>Pedidos em andamento agora
+            <span class="text-muted small fw-normal" id="limiteAtraso"></span>
+        </div>
+        <div class="card-body p-0 table-responsive">
+            <table class="table table-hover align-middle mb-0 small">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-3">#</th>
+                        <th>Cliente</th>
+                        <th>Status</th>
+                        <th>Entrada</th>
+                        <th>Em aberto</th>
+                        <th class="pe-3 text-end">Valor</th>
+                    </tr>
+                </thead>
+                <tbody id="tabelaFila">
+                    <tr><td colspan="6" class="text-center text-muted py-4">Carregando...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Apache ECharts (gráficos) e o script do dashboard -->
+    <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+    <script th:src="@{/js/dashboard.js}"></script>
+</div>
+
+</body>
+</html>
