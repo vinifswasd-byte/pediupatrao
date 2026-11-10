@@ -1,7 +1,45 @@
-# PediuPatrão — Controle de acesso, pedidos e auditoria
+# PediuPatrão — Sistema de pedidos da pizzaria
 
-Evolução do sistema de pedidos da pizzaria (Atividade Prática M1 – Parte 2).
-Tecnologias mantidas: **Java 21, Spring Boot 3.4, Spring Security, MongoDB (Atlas) e Thymeleaf**.
+Tecnologias: **Java 21, Spring Boot 3.4, Spring Security, MongoDB (Atlas), Thymeleaf e Apache ECharts**.
+
+| Versão | Atividade | O que entrou |
+|---|---|---|
+| `v2.0.0` | **Dashboard Administrativo** | Indicadores, gráficos, situação dos pedidos, ranking, filtros, API REST e tempo real |
+| `v1.0` | Prática M1 Parte 2 | Perfis, fluxo de pedidos, descontos, cancelamento e auditoria |
+
+## Dashboard Administrativo (v2.0.0)
+
+Painel em **`/dashboard`** (perfis ADMIN e GERENTE) que consome a API **`/api/dashboard`**.
+
+| Documento | Conteúdo |
+|---|---|
+| [`docs/requisitos.md`](docs/requisitos.md) | Requisitos funcionais (RF01–RF07), não funcionais, decisões de projeto e arquitetura |
+| [`docs/api-dashboard.md`](docs/api-dashboard.md) | Endpoints com parâmetros, exemplos de requisição e resposta e erros |
+| [`docs/testes.md`](docs/testes.md) | Estratégia, testes automatizados, roteiro funcional e evidências |
+| [`docs/dashboard.http`](docs/dashboard.http) | Requisições prontas, incluindo os casos de erro |
+| Vídeo de apresentação | _(link do vídeo)_ |
+
+**Destaques:**
+- **Cálculos no MongoDB:** os números saem de aggregation pipelines (`$match`, `$group`, `$unwind`, `$facet`), e não de laços em Java.
+- **Tempo real:** quando um pedido muda, o servidor avisa a tela por Server-Sent Events e o dashboard se atualiza sozinho.
+- **Filtros:** período, status, entrega/retirada e produto valem para todos os gráficos de uma vez e ficam salvos na URL.
+- **Comparativo:** faturamento e pedidos comparados com o período anterior de mesmo tamanho.
+
+**Endpoints:** `GET /api/dashboard/opcoes`, `/resumo`, `/vendas`, `/pedidos/situacao`, `/produtos/ranking`, `/canais` e `/eventos` (SSE).
+
+**Dados de demonstração:** para os gráficos terem volume, coloque `pediupatrao.demo.carga=true` no
+`application.properties`, suba o sistema uma vez (são gerados cerca de 400 pedidos dos últimos 45 dias, marcados
+como "Pedido de demonstração") e volte para `false`. A carga só roda se o banco tiver menos de 50 pedidos.
+
+**Gitflow:**
+- `main`: versões entregues, com tags;
+- `develop`: integração das features;
+- branches da atividade: `feature/dashboard-api`, `feature/dashboard-front`, `feature/dados-demonstracao` e `feature/documentacao-dashboard`;
+- `release/2.0.0`: preparação da versão antes de ir para a `main`.
+
+---
+
+# Atividade anterior: controle de acesso, pedidos e auditoria (v1.0)
 
 ## Como executar
 

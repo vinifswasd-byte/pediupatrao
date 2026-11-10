@@ -1,0 +1,73 @@
+### Requisições da API do dashboard (VS Code com a extensão "REST Client", IntelliJ ou Postman).
+### Autenticação HTTP Basic: só leitura, então não precisa de token CSRF.
+
+@base = http://localhost:8080
+
+### 1) Opções de filtro (gerente) -> 200
+GET {{base}}/api/dashboard/opcoes
+Authorization: Basic gerente01 teste123
+
+### 2) Resumo dos últimos 30 dias (padrão) -> 200
+GET {{base}}/api/dashboard/resumo
+Authorization: Basic gerente01 teste123
+
+### 3) Resumo de um período, só pedidos de entrega -> 200
+GET {{base}}/api/dashboard/resumo?inicio=2026-11-01&fim=2026-11-10&modalidade=ENTREGA
+Authorization: Basic admin teste123
+
+### 4) Vendas por dia -> 200
+GET {{base}}/api/dashboard/vendas?agrupamento=DIA
+Authorization: Basic gerente01 teste123
+
+### 5) Horário de pico -> 200
+GET {{base}}/api/dashboard/vendas?agrupamento=HORA_DO_DIA
+Authorization: Basic gerente01 teste123
+
+### 6) Vendas por dia da semana, só finalizados e cancelados -> 200
+GET {{base}}/api/dashboard/vendas?agrupamento=DIA_DA_SEMANA&status=FINALIZADO&status=CANCELADO
+Authorization: Basic gerente01 teste123
+
+### 7) Situação dos pedidos e fila -> 200
+GET {{base}}/api/dashboard/pedidos/situacao
+Authorization: Basic gerente01 teste123
+
+### 8) Top 3 produtos por valor -> 200
+GET {{base}}/api/dashboard/produtos/ranking?criterio=FATURAMENTO&limite=3
+Authorization: Basic gerente01 teste123
+
+### 9) Entrega x retirada -> 200
+GET {{base}}/api/dashboard/canais
+Authorization: Basic gerente01 teste123
+
+### Casos de erro
+
+### 10) Sem login -> 401
+GET {{base}}/api/dashboard/resumo
+
+### 11) Atendente não acessa o dashboard -> 403
+GET {{base}}/api/dashboard/resumo
+Authorization: Basic atendente01 teste123
+
+### 12) Período invertido -> 400
+GET {{base}}/api/dashboard/resumo?inicio=2026-11-10&fim=2026-11-01
+Authorization: Basic gerente01 teste123
+
+### 13) Data em formato brasileiro -> 400 (a API usa AAAA-MM-DD)
+GET {{base}}/api/dashboard/resumo?inicio=10/11/2026
+Authorization: Basic gerente01 teste123
+
+### 14) Status inexistente -> 400
+GET {{base}}/api/dashboard/resumo?status=ENTREGUE
+Authorization: Basic gerente01 teste123
+
+### 15) Limite do ranking fora da faixa -> 400
+GET {{base}}/api/dashboard/produtos/ranking?limite=50
+Authorization: Basic gerente01 teste123
+
+### 16) Período maior que 366 dias -> 400
+GET {{base}}/api/dashboard/resumo?inicio=2024-01-01&fim=2026-11-10
+Authorization: Basic gerente01 teste123
+
+### 17) Tempo real (abra e deixe rodando; altere um pedido em outra aba)
+GET {{base}}/api/dashboard/eventos
+Authorization: Basic gerente01 teste123
