@@ -2,6 +2,7 @@ package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.ItemPedidoRequest;
 import com.umc.pediupatrao.dto.PedidoRequest;
+import com.umc.pediupatrao.dto.dashboard.PedidoAlteradoEvento;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.entity.DescontoAplicado;
 import com.umc.pediupatrao.entity.ItemPedido;
@@ -25,6 +26,7 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Sort;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -52,16 +54,18 @@ public class PedidoService {
     private final AuditoriaService auditoria;
     private final UsuarioLogado usuarioLogado;
     private final Clock relogio;
+    private final ApplicationEventPublisher eventos;
 
     public PedidoService(PedidoRepository pedidoRepository, ClienteRepository clienteRepository,
             ProdutoRepository produtoRepository, AuditoriaService auditoria,
-            UsuarioLogado usuarioLogado, Clock relogio) {
+            UsuarioLogado usuarioLogado, Clock relogio, ApplicationEventPublisher eventos) {
         this.pedidoRepository = pedidoRepository;
         this.clienteRepository = clienteRepository;
         this.produtoRepository = produtoRepository;
         this.auditoria = auditoria;
         this.usuarioLogado = usuarioLogado;
         this.relogio = relogio;
+        this.eventos = eventos;
     }
 
     @PreAuthorize("hasAnyRole('ADMIN','GERENTE','ATENDENTE')")
@@ -92,6 +96,7 @@ public class PedidoService {
 
         auditoria.registrar(TipoOperacao.CRIACAO_PEDIDO, "Pedido", salvo.getId(),
                 Map.of(), salvo.retratoParaAuditoria(), null);
+        avisarDashboard(salvo, TipoOperacao.CRIACAO_PEDIDO);
         return salvo;
     }
 
@@ -125,6 +130,7 @@ public class PedidoService {
         Pedido salvo = pedidoRepository.save(pedido);
         auditoria.registrar(TipoOperacao.MUDANCA_STATUS_PEDIDO, "Pedido", salvo.getId(),
                 antes, salvo.retratoParaAuditoria(), null);
+        avisarDashboard(salvo, TipoOperacao.MUDANCA_STATUS_PEDIDO);
         return salvo;
     }
 
@@ -140,6 +146,7 @@ public class PedidoService {
         Pedido salvo = pedidoRepository.save(pedido);
         auditoria.registrar(TipoOperacao.CANCELAMENTO_PEDIDO, "Pedido", salvo.getId(),
                 antes, salvo.retratoParaAuditoria(), justificativa);
+        avisarDashboard(salvo, TipoOperacao.CANCELAMENTO_PEDIDO);
         return salvo;
     }
 
@@ -183,6 +190,7 @@ public class PedidoService {
         Pedido salvo = pedidoRepository.save(pedido);
         auditoria.registrar(TipoOperacao.DESCONTO_PEDIDO, "Pedido", salvo.getId(),
                 antes, salvo.retratoParaAuditoria(), justificativa);
+        avisarDashboard(salvo, TipoOperacao.DESCONTO_PEDIDO);
         return salvo;
     }
 
@@ -256,6 +264,12 @@ public class PedidoService {
             throw new RegraNegocioException("Texto muito longo (máximo de " + tamanhoMaximo + " caracteres).");
         }
         return limpo;
+    }
+
+    // Avisa o dashboard (RF07). O PedidoService não sabe quem está ouvindo:
+    // só publica o evento, e o PainelTempoReal cuida de repassar para as telas.
+    private void avisarDashboard(Pedido pedido, TipoOperacao operacao) {
+        eventos.publishEvent(new PedidoAlteradoEvento(pedido.getId(), operacao, pedido.getStatus(), agora()));
     }
 
     private Instant agora() {
